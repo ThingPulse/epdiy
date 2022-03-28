@@ -242,13 +242,14 @@ void idf_loop() {
 void idf_setup() {
   heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
   heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
-
+  delay(2000);
   epd_init(EPD_LUT_1K);
   hl = epd_hl_init(WAVEFORM);
 
   // Default orientation is EPD_ROT_LANDSCAPE
   epd_set_rotation(EPD_ROT_LANDSCAPE);
-
+  printf("V5: %d\n", CONFIG_EPD_BOARD_REVISION_V5);
+  //printf("V6: %d\n", CONFIG_EPD_BOARD_REVISION_V6);
   printf("Dimensions after rotation, width: %d height: %d\n\n", epd_rotated_display_width(), epd_rotated_display_height());
 }
 

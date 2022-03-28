@@ -20,14 +20,16 @@
 
 /* Edges */
 #define CKH GPIO_NUM_15
+#define CFG_SCLK GPIO_NUM_14
 
-#if defined(CONFIG_EPD_BOARD_REVISION_V5)
+//#if defined(CONFIG_EPD_BOARD_REVISION_V5)
 /* Config Reggister Control */
-#define CFG_DATA GPIO_NUM_33
+#define CFG_CLK GPIO_NUM_14
+/*#define CFG_DATA GPIO_NUM_33
 #define CFG_CLK GPIO_NUM_32
 #define CFG_STR GPIO_NUM_0
-#endif
-#if defined(CONFIG_EPD_BOARD_REVISION_V6)
+#endif*/
+#if defined(CONFIG_EPD_BOARD_REVISION_V6) || defined(CONFIG_EPD_BOARD_REVISION_V5)
 #define CFG_SCL GPIO_NUM_33
 #define CFG_SDA GPIO_NUM_32
 #define CFG_INTR GPIO_NUM_35

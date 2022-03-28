@@ -5,19 +5,24 @@
 #include "rmt_pulse.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "driver/rtc_io.h"
 
 #include "xtensa/core-macros.h"
 
 #if defined(CONFIG_EPD_BOARD_REVISION_V2_V3) || defined(CONFIG_EPD_BOARD_REVISION_LILYGO_T5_47)
 #include "config_reg_v2.h"
 #else
-#if defined(CONFIG_EPD_BOARD_REVISION_V4) || defined(CONFIG_EPD_BOARD_REVISION_V5)
+#if defined(CONFIG_EPD_BOARD_REVISION_V4)
 #include "config_reg_v4.h"
 #else
+#if defined(CONFIG_EPD_BOARD_REVISION_V5)
+#include "config_reg_v5.h"
+#else 
 #if defined(CONFIG_EPD_BOARD_REVISION_V6)
 #include "config_reg_v6.h"
 #else
 #error "unknown revision"
+#endif
 #endif
 #endif
 #endif
@@ -43,7 +48,7 @@ void IRAM_ATTR busy_delay(uint32_t cycles) {
 }
 
 
-#if !defined(CONFIG_EPD_BOARD_REVISION_V6)
+#if !(defined(CONFIG_EPD_BOARD_REVISION_V6) || defined(CONFIG_EPD_BOARD_REVISION_V5))
 inline static void IRAM_ATTR push_cfg_bit(bool bit) {
   gpio_set_level(CFG_CLK, 0);
   if (bit) {
@@ -58,7 +63,7 @@ inline static void IRAM_ATTR push_cfg_bit(bool bit) {
 void epd_base_init(uint32_t epd_row_width) {
 
 
-#if defined(CONFIG_EPD_BOARD_REVISION_V6)
+#if defined(CONFIG_EPD_BOARD_REVISION_V6) || defined(CONFIG_EPD_BOARD_REVISION_V5)
   i2c_config_t conf;
   conf.mode = I2C_MODE_MASTER;
   conf.sda_io_num = CFG_SDA;
@@ -66,7 +71,7 @@ void epd_base_init(uint32_t epd_row_width) {
   conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
   conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
   conf.master.clk_speed = 400000;
-  conf.clk_flags = I2C_SCLK_SRC_FLAG_FOR_NOMAL;
+  //conf.clk_flags = I2C_SCLK_SRC_FLAG_FOR_NOMAL;
   ESP_ERROR_CHECK(i2c_param_config(EPDIY_I2C_PORT, &conf));
 
   ESP_ERROR_CHECK(i2c_driver_install(EPDIY_I2C_PORT, I2C_MODE_MASTER, 0, 0, 0));
@@ -115,9 +120,23 @@ void epd_base_deinit(){
   epd_poweroff();
   i2s_deinit();
 
-#if defined(CONFIG_EPD_BOARD_REVISION_V6)
+#if defined(CONFIG_EPD_BOARD_REVISION_V6) || defined(CONFIG_EPD_BOARD_REVISION_V5)
   cfg_deinit(&config_reg);
   i2c_driver_delete(EPDIY_I2C_PORT);
+  gpio_set_direction(CFG_SDA, GPIO_MODE_INPUT_OUTPUT_OD);
+  gpio_set_direction(CFG_SCL, GPIO_MODE_INPUT_OUTPUT_OD);
+  gpio_set_direction(V4_LATCH_ENABLE, GPIO_MODE_INPUT_OUTPUT_OD);
+  //gpio_set_direction(SCLK, GPIO_MODE_INPUT);
+  gpio_set_direction(CFG_SCLK, GPIO_MODE_INPUT_OUTPUT_OD);
+  /*gpio_reset_pin(CFG_SDA);
+  rtc_gpio_isolate(CFG_SDA);
+  gpio_reset_pin(CFG_SDA);
+  rtc_gpio_isolate(CFG_SCL);
+  gpio_reset_pin(CFG_SDA);
+  rtc_gpio_isolate(V4_LATCH_ENABLE);
+  //gpio_set_direction(SCLK, GPIO_MODE_INPUT);
+  gpio_reset_pin(CFG_SDA);
+  rtc_gpio_isolate(CFG_SCLK);*/
 #else
   config_reg.ep_stv = false;
   config_reg.ep_mode = false;

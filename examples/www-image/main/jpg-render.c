@@ -43,7 +43,7 @@ extern const uint8_t server_cert_pem_start[] asm("_binary_server_cert_pem_start"
 // JPEG decoder
 JDEC jd;
 JRESULT rc;
-
+bool isFirstCallToCallback = true;
 // Buffers
 uint8_t *fb;            // EPD 2bpp buffer
 uint8_t *source_buf;    // JPG download buffer
@@ -66,8 +66,8 @@ static const char * jd_errors[] = {
     "Not supported JPEG standard"
 };
 
-const uint16_t ep_width = EPD_WIDTH;
-const uint16_t ep_height = EPD_HEIGHT;
+const uint16_t ep_width = EPD_WIDTH / 2;
+const uint16_t ep_height = EPD_HEIGHT / 2;
 uint8_t gamme_curve[256];
 
 static const char *TAG = "EPDiy";
@@ -132,6 +132,7 @@ uint8_t find_closest_palette_color(uint8_t oldpixel)
 //   Decode and paint onto the Epaper screen
 //====================================================================================
 void jpegRender(int xpos, int ypos, int width, int height) {
+
  #if JPG_DITHERING
  unsigned long pixel=0;
  for (uint16_t by=0; by<ep_height;by++)
@@ -177,7 +178,7 @@ void jpegRender(int xpos, int ypos, int width, int height) {
 }
 
 void deepsleep(){
-    epd_deinit();
+    //esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_OFF);
     esp_deep_sleep(1000000LL * 60 * DEEPSLEEP_MINUTES_AFTER_RENDER);
 }
 
@@ -205,11 +206,20 @@ tjd_output(JDEC *jd,     /* Decompressor object of current session */
            JRECT *rect   /* Rectangular region to output */
 ) {
   esp_task_wdt_reset();
+  if (isFirstCallToCallback) {
+   
+   epd_clear();
+   //epd_fullclear(&hl, 25);
+   isFirstCallToCallback = false;
+   printf("Cleared screen");
+  }
 
   uint32_t w = rect->right - rect->left + 1;
   uint32_t h = rect->bottom - rect->top + 1;
   uint32_t image_width = jd->width;
   uint8_t *bitmap_ptr = (uint8_t*)bitmap;
+
+  //ESP_LOGI("render", "r: %d, l: %d, b: %d, t: %d", rect->right, rect->left, rect->bottom, rect->top);
 
   for (uint32_t i = 0; i < w * h; i++) {
 
@@ -232,7 +242,8 @@ tjd_output(JDEC *jd,     /* Decompressor object of current session */
 
     /* Optimization note: If we manage to apply here the epd_draw_pixel directly
        then it will be no need to keep a huge raw buffer (But will loose dither) */
-    decoded_image[yy * image_width + xx] = gamme_curve[val];
+    //decoded_image[yy * image_width + xx] = gamme_curve[val];
+    epd_draw_pixel(xx, yy, gamme_curve[val], fb);
   }
 
   return 1;
@@ -247,7 +258,8 @@ int drawBufJpeg(uint8_t *source_buf, int xpos, int ypos) {
     ESP_LOGE(TAG, "JPG jd_prepare error: %s", jd_errors[rc]);
     return ESP_FAIL;
   }
-
+  //epd_fullclear(&hl, 25);
+  //epd_clear();
   uint32_t decode_start = esp_timer_get_time();
 
   // Last parameter scales        v 1 will reduce the image
@@ -263,7 +275,7 @@ int drawBufJpeg(uint8_t *source_buf, int xpos, int ypos) {
   ESP_LOGI("decode", "%d ms . image decompression", time_decomp);
 
   // Render the image onto the screen at given coordinates
-  jpegRender(xpos, ypos, jd.width, jd.height);
+  //jpegRender(xpos, ypos, jd.width, jd.height);
 
   return 1;
 }
@@ -372,7 +384,9 @@ static void http_post(void)
       vTaskDelay(MILLIS_DELAY_BEFORE_SLEEP / portTICK_RATE_MS);
     #endif
     printf("Go to sleep %d minutes\n", DEEPSLEEP_MINUTES_AFTER_RENDER);
-    epd_poweroff();
+    //epd_poweroff();
+    epd_deinit();
+    vTaskDelay(400 / portTICK_PERIOD_MS);
     deepsleep();
 }
 
@@ -490,18 +504,24 @@ void wifi_init_sta(void)
 }
 
 void app_main() {
+  printf("Free mem: %d\n", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+  isFirstCallToCallback = true;
   epd_init(EPD_LUT_64K | EPD_FEED_QUEUE_8);
+  printf("Free mem: %d\n", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+  //epd_init(EPD_OPTIONS_DEFAULT);
   hl = epd_hl_init(WAVEFORM);
   fb = epd_hl_get_framebuffer(&hl);
   epd_set_rotation(DISPLAY_ROTATION);
-  decoded_image = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
+  printf("Free mem: %d\n", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+  //vTaskDelay(5000 / portTICK_PERIOD_MS);
+  /*decoded_image = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT / 4, MALLOC_CAP_SPIRAM);
   if (decoded_image == NULL) {
       ESP_LOGE("main", "Initial alloc back_buf failed!");
   }
-  memset(decoded_image, 255, EPD_WIDTH * EPD_HEIGHT);
+  memset(decoded_image, 255, EPD_WIDTH * EPD_HEIGHT / 4);*/
 
   // Should be big enough to allocate the JPEG file size
-  source_buf = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
+  source_buf = (uint8_t *)heap_caps_malloc(200 * 1000, MALLOC_CAP_SPIRAM);
   if (source_buf == NULL) {
       ESP_LOGE("main", "Initial alloc source_buf failed!");
   }
@@ -529,7 +549,7 @@ void app_main() {
     obtain_time();
   #endif
   epd_poweron();
-  epd_fullclear(&hl, 25);
+  
 
 
   /* printf("EPD w: %d h: %d\n\n", EPD_WIDTH, EPD_HEIGHT);

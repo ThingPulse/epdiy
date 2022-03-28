@@ -290,8 +290,8 @@ void epd_deinit() {
   // FIXME: deinit processes
 #if defined(CONFIG_EPD_BOARD_REVISION_V5) || defined(CONFIG_EPD_BOARD_REVISION_V6)
 
-  gpio_reset_pin(CKH);
-  rtc_gpio_isolate(CKH);
+  //gpio_reset_pin(CKH);
+  //rtc_gpio_isolate(CKH);
   //gpio_reset_pin(CFG_INTR);
   //rtc_gpio_isolate(CFG_INTR);
 #endif

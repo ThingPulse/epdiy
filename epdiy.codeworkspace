@@ -1,0 +1,34 @@
+{
+    "folders": [
+      {
+        "path": "./src"
+      },
+      {
+        "path": "./examples/demo"
+      },
+      {
+        "path": "./examples/calibration_helper"
+      },
+      {
+        "path": "./examples/dragon"
+      },
+      {
+        "path": "./examples/grayscale_test"
+      },
+      {
+        "path": "./examples/mpd_status"
+      },
+      {
+        "path": "./examples/terminal"
+      },
+      {
+        "path": "./examples/weather"
+      },
+      {
+        "path": "./examples/www-image"
+      }
+    ],
+    "settings": {
+      "idf.port": "/dev/cu.SLAB_USBtoUART",
+    }
+  }

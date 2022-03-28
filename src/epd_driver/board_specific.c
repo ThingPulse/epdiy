@@ -1,6 +1,6 @@
 #include "epd_board_specific.h"
 
-#if defined(CONFIG_EPD_BOARD_REVISION_V6)
+#if defined(CONFIG_EPD_BOARD_REVISION_V6) || defined(CONFIG_EPD_BOARD_REVISION_V5)
 #include "pca9555.h"
 #include "display_ops.h"
 
