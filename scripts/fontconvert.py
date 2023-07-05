@@ -22,29 +22,36 @@ compress = args.compress
 size = args.size
 font_name = args.name
 
+# Example
+# ./fontconvert.py Calibri14 14 ~/Library/Fonts/Calibri\ Regular.ttf ~/Library/Fonts/OpenSans-Regular.ttf ~/Library/Fonts/GoogleEmojis-Regular.ttf > ./calibri14.h
+
 # inclusive unicode code point intervals
 # must not overlap and be in ascending order
 intervals = [
     (32, 126),
     (160, 255),
     # punctuation
-    (0x2010, 0x205F),
+    # (0x2010, 0x205F),
+    # currency symbols
+    # (0x20A0, 0x20CF),
+    (0x20AC, 0x20AC), # €, Euro
     # arrows
-    (0x2190, 0x21FF),
+    # (0x2190, 0x21FF),
     # math
     #(0x2200, 0x22FF),
     # symbols
-    (0x2300, 0x23FF),
+    # (0x2300, 0x23FF),
     # box drawing
     #(0x2500, 0x259F),
     # geometric shapes
-    (0x25A0, 0x25FF),
+    # (0x25A0, 0x25FF),
     # misc symbols
-    (0x2600, 0x26F0),
-    (0x2700, 0x27BF),
+    # (0x2600, 0x26F0),
+    # (0x2700, 0x27BF),
     # powerline symbols
     #(0xE0A0, 0xE0A2),
     #(0xE0B0, 0xE0B3),
+    # emojis
     #(0x1F600, 0x1F680),
 ]
 
@@ -84,46 +91,48 @@ def load_glyph(code_point):
             break
         face_index += 1
         print (f"falling back to font {face_index} for {chr(code_point)}.", file=sys.stderr)
-    raise ValueError(f"code point {code_point} not found in font stack!")
+    # raise ValueError(f"code point {code_point} not found in font stack!")
+    return None
 
 for i_start, i_end in intervals:
     for code_point in range(i_start, i_end + 1):
         face = load_glyph(code_point)
-        bitmap = face.glyph.bitmap
-        pixels = []
-        px = 0
-        for i, v in enumerate(bitmap.buffer):
-            y = i / bitmap.width
-            x = i % bitmap.width
-            if x % 2 == 0:
-                px = (v >> 4)
-            else:
-                px = px | (v & 0xF0)
-                pixels.append(px);
-                px = 0
-            # eol
-            if x == bitmap.width - 1 and bitmap.width % 2 > 0:
-                pixels.append(px)
-                px = 0
+        if face is not None:
+            bitmap = face.glyph.bitmap
+            pixels = []
+            px = 0
+            for i, v in enumerate(bitmap.buffer):
+                y = i / bitmap.width
+                x = i % bitmap.width
+                if x % 2 == 0:
+                    px = (v >> 4)
+                else:
+                    px = px | (v & 0xF0)
+                    pixels.append(px);
+                    px = 0
+                # eol
+                if x == bitmap.width - 1 and bitmap.width % 2 > 0:
+                    pixels.append(px)
+                    px = 0
 
-        packed = bytes(pixels);
-        total_packed += len(packed)
-        compressed = packed
-        if compress:
-            compressed = zlib.compress(packed)
+            packed = bytes(pixels);
+            total_packed += len(packed)
+            compressed = packed
+            if compress:
+                compressed = zlib.compress(packed)
 
-        glyph = GlyphProps(
-            width = bitmap.width,
-            height = bitmap.rows,
-            advance_x = norm_floor(face.glyph.advance.x),
-            left = face.glyph.bitmap_left,
-            top = face.glyph.bitmap_top,
-            compressed_size = len(compressed),
-            data_offset = total_size,
-            code_point = code_point,
-        )
-        total_size += len(compressed)
-        all_glyphs.append((glyph, compressed))
+            glyph = GlyphProps(
+                width=bitmap.width,
+                height=bitmap.rows,
+                advance_x=norm_floor(face.glyph.advance.x),
+                left=face.glyph.bitmap_left,
+                top=face.glyph.bitmap_top,
+                compressed_size=len(compressed),
+                data_offset=total_size,
+                code_point=code_point,
+            )
+            total_size += len(compressed)
+            all_glyphs.append((glyph, compressed))
 
 # pipe seems to be a good heuristic for the "real" descender
 face = load_glyph(ord('|'))
